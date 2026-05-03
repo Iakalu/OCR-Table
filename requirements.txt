@@ -1,0 +1,16 @@
+numpy>=1.24
+Pillow>=10.0
+PyYAML>=6.0
+pandas>=2.0
+jupyterlab>=4.0
+streamlit>=1.30
+datasets>=2.18
+
+# Optional deep learning dependencies:
+torch>=2.0
+torchvision>=0.15
+# transformers
+# opencv-python
+# paddleocr
+# paddlepaddle
+# pytesseract

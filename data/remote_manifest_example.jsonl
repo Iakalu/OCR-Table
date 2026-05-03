@@ -1,0 +1,2 @@
+{"image_url":"https://example.com/table_001.png","vertical_lines":[0.05,0.25,0.50,0.75,0.95],"horizontal_lines":[0.08,0.30,0.52,0.74,0.92],"line_mask_width":3}
+{"image_url":"https://example.com/table_002.png","vertical_lines":[14,72,128,190,242],"horizontal_lines":[18,80,140,200,238],"line_mask_width":3}

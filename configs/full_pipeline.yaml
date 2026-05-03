@@ -1,0 +1,32 @@
+preprocess:
+  max_side: 1800
+  deskew: true
+  denoise: true
+
+detection:
+  backend: table_transformer
+  model_name: microsoft/table-transformer-detection
+  confidence_threshold: 0.65
+  nms_iou: 0.50
+  image_size: 1333
+
+structure:
+  backend: table_transformer
+  model_name: microsoft/table-transformer-structure-recognition
+  checkpoint_path: checkpoints/structure_line_cnn.pt
+  line_threshold: 0.45
+  structure_threshold: 0.65
+  merge_tolerance: 8
+  min_cell_width: 18
+  min_cell_height: 12
+  max_rows: 120
+  max_cols: 80
+
+ocr:
+  backend: paddleocr
+  lang: en
+  confidence_threshold: 0.50
+  cell_padding: 4
+
+output:
+  formats: [html, csv, json]
