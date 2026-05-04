@@ -194,6 +194,14 @@ Sau do doi config trong `app.py` tu `configs/default.yaml` sang `configs/full_pi
 python demo.py --config configs/full_pipeline.yaml --image path/to/table.png --output-dir outputs/full_demo
 ```
 
+Neu output co bang nhung cac o rong, kiem tra OCR:
+
+```bash
+python check_ocr_backend.py
+```
+
+Huong dan chi tiet xem `docs/ocr_setup_vi.md`.
+
 ## 7. Chay notebook
 
 ```bash

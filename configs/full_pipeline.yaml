@@ -26,6 +26,7 @@ structure:
 ocr:
   backend: paddleocr
   lang: en
+  trocr_model_name: microsoft/trocr-base-printed
   confidence_threshold: 0.50
   cell_padding: 4
 

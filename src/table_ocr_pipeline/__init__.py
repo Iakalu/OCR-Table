@@ -1,4 +1,3 @@
-from .pipeline import TableOCRPipeline
+from .pipeline.pipeline import TableOCRPipeline
 
 __all__ = ["TableOCRPipeline"]
-
