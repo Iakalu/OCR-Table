@@ -52,6 +52,16 @@ def read_bytes(path: Path) -> bytes:
     return path.read_bytes() if path.exists() else b""
 
 
+def output_has_text(result: dict) -> bool:
+    import json
+
+    json_path = Path(result["json"])
+    if not json_path.exists():
+        return False
+    cells = json.loads(json_path.read_text(encoding="utf-8"))
+    return any(str(cell.get("text", "")).strip() for cell in cells)
+
+
 def execute_notebook(notebook_path: Path) -> tuple[bool, str, Path]:
     executed_dir = OUTPUT_DIR / "executed_notebooks"
     executed_dir.mkdir(parents=True, exist_ok=True)
@@ -104,17 +114,19 @@ left, right = st.columns([0.45, 0.55])
 with left:
     uploaded = st.file_uploader("Upload table image", type=["png", "jpg", "jpeg"])
     use_sample = st.button("Use sample table")
-    image_path: Path | None = None
-    is_sample = False
 
     if uploaded is not None:
         suffix = Path(uploaded.name).suffix or ".png"
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as file:
             file.write(uploaded.getbuffer())
-            image_path = Path(file.name)
+            st.session_state["image_path"] = str(Path(file.name))
+            st.session_state["is_sample"] = False
     elif use_sample:
-        image_path = create_synthetic_table(OUTPUT_DIR / "synthetic_table.png")
-        is_sample = True
+        st.session_state["image_path"] = str(create_synthetic_table(OUTPUT_DIR / "synthetic_table.png"))
+        st.session_state["is_sample"] = True
+
+    image_path = Path(st.session_state["image_path"]) if "image_path" in st.session_state else None
+    is_sample = bool(st.session_state.get("is_sample", False))
 
     if image_path:
         st.image(Image.open(image_path), caption="Input image", use_container_width=True)
@@ -131,6 +143,11 @@ with right:
         st.info("Upload an image or use the sample table, then run the pipeline.")
     else:
         st.success(f"Done: {result['tables']} table(s), {result['cells']} cell(s)")
+        if not output_has_text(result):
+            st.warning(
+                "Structure output was produced, but OCR text is empty. Install/configure PaddleOCR or choose Full pretrained "
+                "with a working OCR backend to fill cell text."
+            )
         crop_path = OUTPUT_DIR / "table_0.png"
         if crop_path.exists():
             st.image(Image.open(crop_path), caption="Detected table crop", use_container_width=True)

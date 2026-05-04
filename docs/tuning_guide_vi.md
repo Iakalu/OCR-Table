@@ -51,6 +51,21 @@ Tinh huong:
 - Tieng Viet: doi `lang` sang backend ho tro `vi`.
 - Bang so lieu: them post-processing normalize number/date/currency.
 
+Neu CSV/HTML/JSON co cell nhung text rong:
+
+- Chua cai OCR backend hoac OCR backend load that bai.
+- Cai PaddleOCR:
+
+```powershell
+pip install paddleocr paddlepaddle
+```
+
+- Hoac cai Tesseract OCR tren Windows, sau do:
+
+```powershell
+pip install pytesseract
+```
+
 ## Theo loai bang
 
 Bang co duong ke ro:
@@ -76,4 +91,3 @@ Bang tai chinh:
 - fine-tune tren FinTabNet;
 - post-process currency, percentage, negative number;
 - dung HTML/JSON thay vi ep CSV qua som neu co merged headers.
-

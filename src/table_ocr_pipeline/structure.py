@@ -13,6 +13,7 @@ class StructureRecognizer:
         self.checkpoint_path = config.get("checkpoint_path", "checkpoints/structure_line_cnn.pt")
         self.model_name = config.get("model_name", "microsoft/table-transformer-structure-recognition")
         self.line_threshold = float(config.get("line_threshold", 0.45))
+        self.line_projection_threshold = float(config.get("line_projection_threshold", 0.08))
         self.structure_threshold = float(config.get("structure_threshold", 0.50))
         self.merge_tolerance = int(config.get("merge_tolerance", 8))
         self.min_cell_width = int(config.get("min_cell_width", 24))
@@ -203,7 +204,7 @@ class StructureRecognizer:
                 pixel = gray.getpixel((idx, j)) if axis == "x" else gray.getpixel((j, idx))
                 if pixel < 80:
                     dark += 1
-            if dark / max(1, line_len) > 0.45:
+            if dark / max(1, line_len) > self.line_projection_threshold:
                 raw_positions.append(idx)
 
         return self._merge_close_positions(raw_positions)
