@@ -65,7 +65,8 @@ class OCRReader:
 
 
         # TrOCR fallback
-        if self.backend in {"auto", "trocr"}:
+        enable_trocr_fallback = bool((self.config.get("ocr", {}) or {}).get("enable_trocr_fallback", False))
+        if self.backend == "trocr" or (self.backend == "auto" and enable_trocr_fallback):
             trocr = self._load_trocr()
             if trocr:
                 return self._recognize_trocr(image, trocr)
@@ -86,7 +87,7 @@ class OCRReader:
                     self._debug(f"PaddleOCR token runtime failed: {type(exc).__name__}: {exc}")
                     self._paddle = False
 
-            self._debug("PaddleOCR unavailable → no tokens")
+            self._debug("PaddleOCR unavailable â†’ no tokens")
 
         return []
 
@@ -129,7 +130,6 @@ class OCRReader:
 
         return image
 
-
     # PADDLE OCR
     def _load_paddle(self):
         if self._paddle is not None:
@@ -144,21 +144,23 @@ class OCRReader:
             from paddleocr import PaddleOCR
 
             def _try_create(lang: str):
-                # PaddleOCR args vary across versions. Some builds don't accept `show_log`.
-                kwargs = {
-                    "use_angle_cls": True,
-                    "lang": lang,
-                }
-
-                try:
-                    return PaddleOCR(**kwargs, show_log=False)
-                except TypeError:
-                    return PaddleOCR(**kwargs)
-                except ValueError as exc:
-                    msg = str(exc).lower()
-                    if "show_log" in msg and ("unknown argument" in msg or "unexpected" in msg):
+                # PaddleOCR arguments vary across versions. Try conservative constructors first
+                # after the legacy show_log form fails.
+                attempts = [
+                    {"use_angle_cls": True, "lang": lang, "show_log": False},
+                    {"use_angle_cls": True, "lang": lang},
+                    {"lang": lang},
+                    {"use_angle_cls": True, "lang": "en"},
+                    {"lang": "en"},
+                    {},
+                ]
+                last_error = None
+                for kwargs in attempts:
+                    try:
                         return PaddleOCR(**kwargs)
-                    raise
+                    except Exception as exc:
+                        last_error = exc
+                raise last_error if last_error else RuntimeError("Unable to initialize PaddleOCR")
 
             try:
                 self._paddle = _try_create(self.lang)
@@ -173,6 +175,21 @@ class OCRReader:
 
         return self._paddle
 
+    def _normalize_paddle_lines(self, result):
+
+        if result is None:
+            return []
+        if isinstance(result, list):
+            if not result:
+                return []
+            first = result[0]
+            if first is None:
+                return []
+            if isinstance(first, list):
+                return [ln for ln in first if ln is not None]
+            return [ln for ln in result if ln is not None]
+        return []
+    
     def _recognize_paddle(self, image: Image.Image, ocr) -> OCRToken:
         img = np.array(image)
         try:
@@ -191,7 +208,7 @@ class OCRReader:
         texts = []
         scores = []
 
-        for line in result[0] if result else []:
+        for line in self._normalize_paddle_lines(result):
             if isinstance(line, dict):
                 text = line.get("text") or line.get("rec_text") or ""
                 score = line.get("score") or line.get("rec_score") or 0.0
@@ -231,7 +248,7 @@ class OCRReader:
 
         tokens = []
 
-        for line in result[0] if result else []:
+        for line in self._normalize_paddle_lines(result):
             if isinstance(line, dict):
                 text = line.get("text") or line.get("rec_text") or ""
                 score = float(line.get("score") or line.get("rec_score") or 0.0)

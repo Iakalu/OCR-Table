@@ -30,6 +30,7 @@ class TableOCRPipeline:
     def run(self, image_path: str | Path, output_dir: str | Path) -> dict:
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
+        self._clear_previous_debug_outputs(output_dir)
 
         # debug OCR
         if hasattr(self.ocr, "debug_dir"):
@@ -46,6 +47,7 @@ class TableOCRPipeline:
         all_cells: List[Cell] = []
 
         cell_padding = int(self.config.get("ocr", {}).get("cell_padding", 3))
+        per_cell_fallback = bool(self.config.get("ocr", {}).get("per_cell_fallback", True))
 
 
         # LOOP TABLES
@@ -89,7 +91,7 @@ class TableOCRPipeline:
                     # token-based OCR
                     cell.text = " ".join(t.text for t in assigned_tokens).strip()
                     cell.score = sum(t.score for t in assigned_tokens) / len(assigned_tokens)
-                else:
+                elif per_cell_fallback:
                     # fallback: OCR per cell
                     cell_img = crop(table_image, cell.bbox, padding=cell_padding)
 
@@ -97,6 +99,9 @@ class TableOCRPipeline:
 
                     cell.text = text
                     cell.score = 0.0 if not text else 1.0
+                else:
+                    cell.text = ""
+                    cell.score = 0.0
 
             all_cells.extend(cells)
 
@@ -119,6 +124,14 @@ class TableOCRPipeline:
             "html": str(html_path),
             "json": str(json_path),
         }
+
+    def _clear_previous_debug_outputs(self, output_dir: Path) -> None:
+        for pattern in ("ocr_debug.log", "table_*_ocr_tokens.json"):
+            for path in output_dir.glob(pattern):
+                try:
+                    path.unlink()
+                except OSError:
+                    pass
 
 
     # TOKEN → CELL MATCHING
@@ -180,9 +193,10 @@ class TableOCRPipeline:
         if bool(cfg.get("denoise", False)):
             image = image.filter(ImageFilter.MedianFilter(size=3))
 
-        # boost contrast & sharpness a bit for small fonts/grid lines
-        image = ImageOps.autocontrast(image, cutoff=1)
-        image = ImageEnhance.Contrast(image).enhance(float(cfg.get("contrast", 1.25)))
-        image = ImageEnhance.Sharpness(image).enhance(float(cfg.get("sharpness", 1.4)))
+        # boost contrast & sharpness only when explicitly requested by config
+        if bool(cfg.get("autocontrast", True)):
+            image = ImageOps.autocontrast(image, cutoff=int(cfg.get("autocontrast_cutoff", 1)))
+        image = ImageEnhance.Contrast(image).enhance(float(cfg.get("contrast", 1.0)))
+        image = ImageEnhance.Sharpness(image).enhance(float(cfg.get("sharpness", 1.0)))
 
         return image

@@ -28,7 +28,7 @@ structure:
   max_cols: 80
 
 ocr:
-  backend: paddleocr
+  backend: auto
   lang: en
   trocr_model_name: microsoft/trocr-base-printed
   confidence_threshold: 0.50
@@ -43,3 +43,50 @@ ocr:
 
 output:
   formats: [html, csv, json]
+# Optional preset retained from the former configs/excel_screenshot.yaml.
+# It is documented here instead of kept as a separate runtime config.
+# To use these settings, copy the preset values into the top-level sections above.
+presets:
+  excel_screenshot:
+    preprocess:
+      max_side: 1600
+      deskew: false
+      denoise: false
+      contrast: 1.0
+      sharpness: 1.0
+
+    detection:
+      backend: heuristic
+      model_name: microsoft/table-transformer-detection
+      confidence_threshold: 0.55
+      nms_iou: 0.50
+      image_size: 1024
+
+    structure:
+      backend: heuristic
+      model_name: microsoft/table-transformer-structure-recognition
+      checkpoint_path: checkpoints/structure_line_cnn.pt
+      line_threshold: 0.45
+      line_projection_threshold: 0.08
+      structure_threshold: 0.50
+      merge_tolerance: 8
+      min_cell_width: 20
+      min_cell_height: 12
+      max_rows: 80
+      max_cols: 40
+
+    ocr:
+      backend: paddleocr
+      lang: en
+      trocr_model_name: microsoft/trocr-base-printed
+      confidence_threshold: 0.50
+      cell_padding: 3
+      preprocess:
+        denoise: false
+        autocontrast_cutoff: 0
+        contrast: 1.0
+        sharpness: 1.0
+        binarize: false
+
+    output:
+      formats: [html, csv, json]

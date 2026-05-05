@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from src.table_ocr_pipeline.utils.runtime_env import configure_runtime_environment
+
+configure_runtime_environment()
+
 import argparse
 from pathlib import Path
 
@@ -47,7 +51,13 @@ def main() -> None:
     print(f"\nimage: {image_path}")
     print(f"size: {image.size}\n")
 
-    ocr = PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
+    try:
+        ocr = PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
+    except Exception:
+        try:
+            ocr = PaddleOCR(use_angle_cls=True, lang="en")
+        except Exception:
+            ocr = PaddleOCR(lang="en")
 
     result = ocr.ocr(np.array(image), cls=True)
 

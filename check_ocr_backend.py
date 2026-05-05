@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from src.table_ocr_pipeline.utils.runtime_env import configure_runtime_environment
+
+configure_runtime_environment()
+
 import shutil
 import importlib.util
 

@@ -1,337 +1,443 @@
-# Table OCR Deep Learning Pipeline
+# OCR-Table Deep Learning Pipeline (Local/GitHub Ready)
 
-Du an mau cho bai tap Deep Learning: OCR bang bieu tu anh/PDF scan.
+This repository contains an end-to-end OCR table extraction pipeline for document/table images. It is designed for a Deep Learning coursework/research project and can run in two modes:
 
-Pipeline:
+- **Lightweight mode**: heuristic/table-line detection + trained `LineSegNet` structure model + PaddleOCR fallback.
+- **Full pretrained mode**: Table Transformer detection + Table Transformer structure recognition + PaddleOCR.
 
-```text
-Input image/PDF
-  -> Preprocess
-  -> Table Detection
-  -> Table Structure Recognition
-  -> Cell OCR
-  -> Post-processing / Reconstruction
-  -> CSV / HTML / JSON
-```
+The output is a reconstructed table in:
 
-Repo nay co 2 muc tieu:
+- `CSV`
+- `HTML`
+- `JSON` with cell coordinates and OCR confidence
 
-1. Giai thich kien truc va cach xay dung model OCR bang bieu theo tung buoc.
-2. Co code demo/web localhost/notebook de chay va trinh bay tren GitHub.
+---
 
-## 1. Vi sao chon OCR bang bieu?
+## What is implemented
 
-OCR thong thuong chi tra ve text. Voi bang bieu, ta can biet text thuoc hang nao, cot nao, o nao, co merged cell hay khong. Do do bai toan dung hon la table understanding.
+### Direction A: Lightweight/custom pipeline
 
-Ung dung:
+- Table region detection with heuristic and Excel/Sheets screenshot-aware fallback.
+- Trainable `LineSegNet` structure model for row/column line segmentation.
+- Remote Hugging Face dataset loading for structure training.
+- Cell reconstruction from detected row/column geometry.
+- PaddleOCR/Tesseract/TrOCR-compatible OCR adapter.
+- Streamlit localhost demo.
 
-- trich xuat bang tu bao cao tai chinh;
-- doc hoa don, phieu thu, phieu xuat kho;
-- trich xuat ket qua xet nghiem/y te;
-- chuyen bang trong PDF scan thanh CSV/Excel;
-- document AI cho van ban hanh chinh.
+### Direction B: Full pretrained pipeline
 
-## 2. Kien truc de xuat
+- Table Transformer for table detection.
+- Table Transformer for structure recognition.
+- PaddleOCR for table-level OCR tokens.
+- Token-to-cell assignment by OCR bounding-box center.
+- Configurable pipeline modes through YAML.
 
-### Buoc 1: Preprocess
+### Evaluation and debugging
 
-- convert PDF page thanh image 200-300 DPI;
-- deskew anh nghieng;
-- denoise, normalize contrast;
-- resize giu aspect ratio.
+- Cell detection F1 / IoU utilities.
+- JSON-based evaluation script.
+- OCR backend checker.
+- PaddleOCR image debugger.
+- OCR debug logs in output directories.
 
-### Buoc 2: Table Detection
+---
 
-Input: anh trang tai lieu.
+## Dataset format support
 
-Output: bounding box cua tung bang.
+The training script supports three data sources:
 
-Model co the dung:
+1. **Synthetic tables** generated on the fly.
+2. **Remote JSONL manifest** with image URLs and row/column annotations.
+3. **Hugging Face dataset**: `katphlab/fintabnet-pubtables-full`.
 
-- YOLO: nhanh, de train/deploy;
-- Faster R-CNN: baseline detection tot;
-- DETR/Table Transformer: phu hop de trinh bay research;
-- CascadeTabNet/Mask R-CNN: tot khi can mask/structure.
-
-### Buoc 3: Table Structure Recognition
-
-Input: crop cua bang.
-
-Output: row, column, cell, spanning cell, header/body.
-
-Model co the dung:
-
-- Table Transformer structure recognition;
-- TSRFormer;
-- Graph/neural parser tren OCR word boxes;
-- image-to-HTML model tren PubTabNet.
-
-### Buoc 4: Cell Text OCR
-
-Input: crop tung cell.
-
-Output: text + confidence.
-
-Model co the dung:
-
-- PaddleOCR: de dung, manh cho demo;
-- CRNN: nhe, de train lai;
-- TrOCR: Transformer OCR, tot nhung nang;
-- Tesseract: baseline nhanh cho anh sach.
-
-### Buoc 5: Reconstruction
-
-- sort rows/columns theo toa do;
-- match OCR text vao cell;
-- xu ly row span / column span;
-- xuat HTML de giu structure;
-- xuat CSV khi bang don gian;
-- xuat JSON de debug/model evaluation.
-
-## 3. Cau truc project
+The selected dataset for this project is:
 
 ```text
-.
-|-- app.py                         # web localhost bang Streamlit
-|-- demo.py                        # demo CLI
-|-- requirements.txt
-|-- pyproject.toml
-|-- configs/
-|   `-- default.yaml
-|-- data/
-|   `-- README.md                  # cach ket noi dataset
-|-- docs/
-|   |-- README_vi.md
-|   |-- running_and_tuning_vi.md
-|   |-- design_vi.md
-|   `-- training_vi.md
-|-- notebooks/
-|   |-- 01_architecture_demo.ipynb
-|   |-- 02_training_skeleton.ipynb
-|   `-- 03_tuning_and_error_analysis.ipynb
-`-- src/
-    `-- table_ocr_pipeline/
-        |-- config.py
-        |-- detection.py
-        |-- ocr.py
-        |-- pipeline.py
-        |-- reconstruct.py
-        |-- structure.py
-        |-- types.py
-        `-- utils.py
+katphlab/fintabnet-pubtables-full
 ```
 
-## 4. Cai dat
+Reason:
 
-Tao moi truong ao:
+- provides table crops;
+- provides bounding boxes and category IDs;
+- includes row/column/header/spanning-cell labels;
+- can be streamed through Hugging Face `datasets` instead of manually downloading files.
 
-```bash
+Expected category schema:
+
+```text
+1 - Table
+2 - Column
+3 - Row
+4 - Column Header
+5 - Projected Row Header
+6 - Spanning Cell
+```
+
+---
+
+## Installation (Windows / VS Code)
+
+Open VS Code terminal in the project root:
+
+```text
+C:\Users\ACER\Documents\OCR-Table-main
+```
+
+Create and activate virtual environment:
+
+```powershell
 python -m venv .venv
-```
-
-Windows PowerShell:
-
-```bash
 .venv\Scripts\Activate.ps1
 ```
 
-Neu bi chan script policy tren Windows:
+If PowerShell blocks activation:
 
-```bash
+```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 .venv\Scripts\Activate.ps1
 ```
 
-Cai dependency:
+Install dependencies:
 
-```bash
+```powershell
 pip install -r requirements.txt
 ```
 
-## 5. Chay demo CLI
+Install OCR stack. Recommended:
 
-```bash
-python demo.py --output-dir outputs/demo
+```powershell
+pip install paddleocr paddlepaddle
 ```
 
-Ket qua:
+Optional full pretrained mode:
 
-- `outputs/demo/synthetic_table.png`
-- `outputs/demo/table_0.png`
-- `outputs/demo/result.csv`
-- `outputs/demo/result.html`
-- `outputs/demo/result.json`
+```powershell
+pip install torch torchvision transformers opencv-python
+```
 
-## 6. Chay web localhost
+Check OCR backend:
 
-```bash
+```powershell
+python check_ocr_backend.py
+```
+
+Expected minimum for OCR text extraction:
+
+```text
+paddleocr package: True
+paddle package: True
+```
+
+`tesseract executable: not found in PATH` is acceptable if PaddleOCR is working.
+
+---
+
+## Quick debug mode (recommended first)
+
+Run the pipeline on the sample/synthetic table:
+
+```powershell
+python demo.py --config configs/lightweight.yaml --output-dir outputs/demo
+```
+
+Run on your own image:
+
+```powershell
+python demo.py --config configs/lightweight.yaml --image "path\to\table.png" --output-dir outputs/my_test
+```
+
+For the Excel screenshot used during debugging:
+
+```powershell
+python demo.py --config configs/lightweight.yaml --image "C:\Users\ACER\OneDrive\Hình ảnh\Screenshots\update-table.png" --output-dir outputs/ocr_excel_debug
+```
+
+Check outputs:
+
+```text
+outputs/<run_name>/table_0.png
+outputs/<run_name>/table_0_ocr_tokens.json
+outputs/<run_name>/ocr_debug.log
+outputs/<run_name>/result.csv
+outputs/<run_name>/result.html
+outputs/<run_name>/result.json
+```
+
+If `table_0_ocr_tokens.json` does not appear, inspect:
+
+```powershell
+notepad outputs\ocr_excel_debug\ocr_debug.log
+```
+
+---
+
+## Runbook: Local web demo
+
+Launch Streamlit:
+
+```powershell
 streamlit run app.py
 ```
 
-Mo browser tai URL Streamlit hien ra, thuong la:
+Open the shown URL, usually:
 
 ```text
 http://localhost:8501
 ```
 
-Web app co the:
+The sidebar allows choosing:
 
-- upload anh bang;
-- dung anh bang synthetic mau;
-- chay pipeline;
-- xem crop bang;
-- tai CSV/HTML/JSON;
-- chay notebook trong sidebar bang `jupyter nbconvert`.
-
-Neu muon chay full model pretrained, cai them:
-
-```bash
-pip install torch torchvision transformers paddleocr paddlepaddle opencv-python
+```text
+Default
+Lightweight
+Full pretrained
 ```
 
-Sau do doi config trong `app.py` tu `configs/default.yaml` sang `configs/full_pipeline.yaml`, hoac chay CLI:
+Recommended order:
 
-```bash
-python demo.py --config configs/full_pipeline.yaml --image path/to/table.png --output-dir outputs/full_demo
+1. Start with `Lightweight`.
+2. Upload an image.
+3. Run OCR pipeline.
+4. Download `CSV`, `HTML`, or `JSON`.
+5. If cells are empty, inspect OCR logs and backend status.
+
+---
+
+## Runbook: Train structure model
+
+### Fast test training
+
+Use this first to verify the whole training pipeline:
+
+```powershell
+python train_structure_model.py --data-source hf-fintabnet-pubtables --hf-config train --hf-split train --max-remote-samples 100 --epochs 1 --steps-per-epoch 10 --batch-size 2 --lr 1e-3
 ```
 
-Neu output co bang nhung cac o rong, kiem tra OCR:
+### Recommended local training
 
-```bash
-python check_ocr_backend.py
+Balanced command for a typical personal laptop/desktop:
+
+```powershell
+python train_structure_model.py --data-source hf-fintabnet-pubtables --hf-config train --hf-split train --max-remote-samples 1000 --epochs 4 --steps-per-epoch 80 --batch-size 4 --lr 1e-3
 ```
 
-Huong dan chi tiet xem `docs/running_and_tuning_vi.md`.
+### Longer GPU training
 
-## 7. Chay notebook
-
-```bash
-jupyter lab
+```powershell
+python train_structure_model.py --data-source hf-fintabnet-pubtables --hf-config train --hf-split train --max-remote-samples 3000 --epochs 6 --steps-per-epoch 150 --batch-size 8 --lr 8e-4
 ```
 
-Mo thu muc `notebooks/`:
-
-- `01_architecture_demo.ipynb`: kien truc va demo;
-- `02_training_skeleton.ipynb`: skeleton train detection/structure;
-- `03_tuning_and_error_analysis.ipynb`: tinh chinh tham so va phan tich loi.
-
-## 8. Nang cap sang model Deep Learning that
-
-Ban demo mac dinh co fallback heuristic de chay nhanh. De dung model that:
-
-```bash
-pip install torch torchvision transformers paddleocr paddlepaddle opencv-python
-```
-
-Sau do sua `configs/default.yaml`:
-
-```yaml
-detection:
-  backend: table_transformer
-ocr:
-  backend: paddleocr
-```
-
-Model detection/structure nen fine-tune tren PubTables-1M. OCR co the dung PaddleOCR truoc, sau do fine-tune CRNN/TrOCR neu domain dac thu.
-
-## 8.1 Train structure model local
-
-Repo co san mot CNN nho `LineSegNet` de train table structure tren synthetic table. Model nay hoc predict 2 mask: duong ke doc va duong ke ngang.
-
-Train nhanh tren CPU:
-
-```bash
-python train_structure_model.py --epochs 8 --steps-per-epoch 120 --batch-size 8
-```
-
-Train nhanh hon neu may yeu:
-
-```bash
-python train_structure_model.py --epochs 3 --steps-per-epoch 40 --batch-size 4
-```
-
-Checkpoint se luu tai:
+Checkpoint output:
 
 ```text
 checkpoints/structure_line_cnn.pt
 ```
 
-Sau khi train, `configs/default.yaml` da de:
+After training, run the web app and select:
 
-```yaml
-structure:
-  backend: auto
-  checkpoint_path: checkpoints/structure_line_cnn.pt
+```text
+Lightweight
 ```
 
-Nen pipeline/web localhost se tu dung model nay neu checkpoint ton tai; neu khong co checkpoint thi fallback ve heuristic.
+---
 
-## 8.2 Train structure model truc tiep tu link
+## Runbook: Full pretrained mode
 
-Neu ban khong muon tai dataset thu cong vao `data/raw/`, tao mot remote manifest `.jsonl`. Moi dong gom link anh va annotation line:
+Install full dependencies:
 
-```json
-{"image_url":"https://domain.com/table_001.png","vertical_lines":[0.05,0.25,0.50,0.75,0.95],"horizontal_lines":[0.08,0.30,0.52,0.74,0.92]}
+```powershell
+pip install torch torchvision transformers paddleocr paddlepaddle opencv-python
 ```
 
-Train truc tiep tu manifest URL:
+Run CLI:
 
-```bash
-python train_structure_model.py --data-source manifest-url --manifest-url "https://your-domain.com/table_structure_manifest.jsonl" --epochs 5 --steps-per-epoch 100 --batch-size 4
+```powershell
+python demo.py --config configs/full_pipeline.yaml --image "path\to\table.png" --output-dir outputs/full_demo
 ```
 
-Chi tiet xem `docs/training_vi.md`.
+Run web:
 
-## 8.3 Dataset chinh duoc chon cho bai
-
-Dataset minh chon cho project nay la Hugging Face `katphlab/fintabnet-pubtables-full`.
-
-Ly do:
-
-- co anh table crop;
-- co bounding boxes cho `table`, `column`, `row`, `column_header`, `projected_row_header`, `spanning_cell`;
-- dung schema gan voi Table Transformer/TATR;
-- co the doc bang Hugging Face `datasets` thay vi tai thu cong vao `data/raw/`.
-
-Train structure model truc tiep tu Hugging Face:
-
-```bash
-python train_structure_model.py --data-source hf-fintabnet-pubtables --hf-split train --max-remote-samples 2000 --epochs 5 --steps-per-epoch 100 --batch-size 4
+```powershell
+streamlit run app.py
 ```
 
-Neu may yeu, chay ban nho:
+Then choose:
 
-```bash
-python train_structure_model.py --data-source hf-fintabnet-pubtables --hf-split train --max-remote-samples 200 --epochs 2 --steps-per-epoch 20 --batch-size 2
+```text
+Full pretrained
 ```
 
-Dataset nay co config rieng `train`, `val`, `test`. Script se tu dung `--hf-split` lam config mac dinh. Neu muon chi ro:
+Notes:
 
-```bash
-python train_structure_model.py --data-source hf-fintabnet-pubtables --hf-config train --hf-split train --max-remote-samples 200 --epochs 2 --steps-per-epoch 20 --batch-size 2
+- First run downloads models from Hugging Face/PaddleOCR.
+- Requires internet.
+- Uses more memory than lightweight mode.
+- If GPU driver is old, PyTorch may fall back to CPU or raise CUDA warnings.
+
+---
+
+## OCR debugging
+
+Check installed backends:
+
+```powershell
+python check_ocr_backend.py
 ```
 
-## 9. Dataset goi y
+Debug PaddleOCR on a cropped table image:
 
-- PubTables-1M: detection + structure recognition.
-- TableBank: table detection.
-- PubTabNet: image-to-HTML table recognition.
-- FinTabNet: bang tai chinh.
-- ICDAR 2019 cTDaR: benchmark kho cho scan/historical documents.
+```powershell
+python debug_paddleocr_image.py --image outputs\ocr_excel_debug\table_0.png --out outputs\ocr_excel_debug\debug_ocr.png
+```
 
-Chi tiet xem `data/README.md`.
+Important files:
 
-## 10. Push len GitHub
+```text
+ocr_debug.log                 # backend loading/runtime messages
+table_0_ocr_tokens.json       # OCR text boxes before cell assignment
+result.json                   # final cells with text, bbox, row, col
+result.csv                    # final table text
+```
 
-Xem huong dan chi tiet trong `docs/README_vi.md`.
+Common issue:
 
-Lenh nhanh:
+```text
+PaddleOCR load failed: ValueError: Unknown argument: show_log
+```
 
-```bash
-git init
+The current OCR adapter handles this by trying multiple PaddleOCR constructors. If this still appears, update the local code or reinstall PaddleOCR.
+
+---
+
+## Evaluation
+
+Evaluate predicted cells against a JSON annotation:
+
+```powershell
+python evaluate_pipeline.py --image "path\to\table.png" --target-json "path\to\target_cells.json" --config configs/lightweight.yaml --output-dir outputs/eval
+```
+
+Implemented metrics:
+
+- cell precision;
+- cell recall;
+- cell F1;
+- IoU-based matching;
+- exact text accuracy.
+
+Recommended report metrics:
+
+- Detection: mAP / precision / recall.
+- Structure: cell F1, row/column F1, GriTS or TEDS if extended.
+- OCR: exact cell accuracy, CER/WER if ground truth text exists.
+- End-to-end: CSV/HTML reconstruction quality.
+
+---
+
+## Local run after downloading checkpoints
+
+Place checkpoints under:
+
+```text
+checkpoints/
+```
+
+Expected structure checkpoint:
+
+```text
+checkpoints/structure_line_cnn.pt
+```
+
+Run:
+
+```powershell
+python demo.py --config configs/lightweight.yaml --image "path\to\table.png" --output-dir outputs/local_run
+```
+
+Or:
+
+```powershell
+streamlit run app.py
+```
+
+---
+
+## Notes on performance and stability
+
+- `Lightweight` mode is recommended for coursework demos and local debugging.
+- `Full pretrained` mode is more realistic but depends on external model downloads.
+- PaddleOCR API changes across versions; the adapter tries multiple constructor formats.
+- OCR is run at table level first, then tokens are assigned to cells by geometry.
+- If `result.csv` has correct grid but empty cells, the problem is OCR, not structure.
+- If `result.json` has only one cell, the problem is table structure detection.
+- Outputs are written under `outputs/` and ignored by Git.
+- Checkpoints are ignored by Git; share large model files through GitHub Release, Google Drive, or Kaggle Output.
+
+---
+
+## Key scripts
+
+```text
+app.py                         Streamlit localhost demo
+demo.py                        CLI inference demo
+train_structure_model.py        Train LineSegNet structure model
+evaluate_pipeline.py            Evaluate predicted cells against JSON
+check_ocr_backend.py            Check PaddleOCR/Tesseract/TrOCR availability
+debug_paddleocr_image.py        Run PaddleOCR directly on one image
+```
+
+Core package:
+
+```text
+src/table_ocr_pipeline/pipeline/detection.py      Table detection
+src/table_ocr_pipeline/pipeline/structure.py      Structure recognition
+src/table_ocr_pipeline/pipeline/ocr.py            OCR adapter
+src/table_ocr_pipeline/pipeline/reconstruct.py    CSV/HTML/JSON reconstruction
+src/table_ocr_pipeline/model/structure_model.py   LineSegNet model
+src/table_ocr_pipeline/data/fintabnet_loader.py   Hugging Face dataset loader
+```
+
+Configs:
+
+```text
+configs/default.yaml
+configs/lightweight.yaml
+configs/full_pipeline.yaml
+```
+
+Docs:
+
+```text
+docs/design_vi.md
+docs/training_vi.md
+docs/running_and_tuning_vi.md
+docs/README_vi.md
+```
+
+---
+
+## GitHub workflow
+
+For a solo coursework repo, working directly on `main` is acceptable:
+
+```powershell
+git status
 git add .
-git commit -m "Initial table OCR deep learning pipeline"
-git branch -M main
-git remote add origin https://github.com/<username>/<repo-name>.git
-git push -u origin main
+git commit -m "Improve table OCR pipeline"
+git push
 ```
+
+Do not commit:
+
+```text
+.venv/
+outputs/
+checkpoints/
+data/raw/
+*.pt
+*.pth
+*.onnx
+```
+
+These are already covered by `.gitignore`.

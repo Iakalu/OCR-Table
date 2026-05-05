@@ -39,7 +39,11 @@ class TableDetector:
         if self.backend in {"auto", "table_transformer"}:
             backend = self._load_table_transformer()
             if backend:
-                return self._predict_table_transformer(image, backend)
+                boxes = self._predict_table_transformer(image, backend)
+                if boxes:
+                    return boxes
+                if self.backend == "table_transformer":
+                    return []
 
         return self._predict_heuristic(image)
 

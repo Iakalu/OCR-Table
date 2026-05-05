@@ -1,17 +1,20 @@
 preprocess:
   max_side: 1600
   deskew: true
-  denoise: true
+  denoise: false
+  autocontrast: false
+  contrast: 1.0
+  sharpness: 1.0
 
 detection:
-  backend: auto
+  backend: heuristic
   model_name: microsoft/table-transformer-detection
   confidence_threshold: 0.55
   nms_iou: 0.50
   image_size: 1024
 
 structure:
-  backend: auto
+  backend: heuristic
   model_name: microsoft/table-transformer-structure-recognition
   checkpoint_path: checkpoints/structure_line_cnn.pt
   line_threshold: 0.45
@@ -24,11 +27,13 @@ structure:
   max_cols: 40
 
 ocr:
-  backend: auto
+  backend: paddleocr
   lang: en
   trocr_model_name: microsoft/trocr-base-printed
   confidence_threshold: 0.50
   cell_padding: 3
+  per_cell_fallback: false
+  enable_trocr_fallback: false
 
 output:
   formats: [html, csv, json]
