@@ -21,6 +21,7 @@ class OCRReader:
         self.backend = ocr_cfg.get("backend", "auto")
         self.lang = ocr_cfg.get("lang", "en")
         self.debug_dir = Path(ocr_cfg["debug_dir"]) if ocr_cfg.get("debug_dir") else None
+        self.paddle_kwargs = dict((ocr_cfg.get("paddle_kwargs") or {}))
 
         # BACKENDS
         self._paddle = None
@@ -144,13 +145,20 @@ class OCRReader:
             from paddleocr import PaddleOCR
 
             def _try_create(lang: str):
+                base_kwargs = {
+                    "lang": lang,
+                    "use_angle_cls": True,
+                }
+                base_kwargs.update(self.paddle_kwargs)
+
                 # PaddleOCR arguments vary across versions. Try conservative constructors first
                 # after the legacy show_log form fails.
                 attempts = [
-                    {"use_angle_cls": True, "lang": lang, "show_log": False},
-                    {"use_angle_cls": True, "lang": lang},
+                    {**base_kwargs, "show_log": False},
+                    {**base_kwargs},
                     {"lang": lang},
-                    {"use_angle_cls": True, "lang": "en"},
+                    {**{**base_kwargs, "lang": "en"}, "show_log": False},
+                    {**{**base_kwargs, "lang": "en"}},
                     {"lang": "en"},
                     {},
                 ]

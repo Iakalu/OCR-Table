@@ -29,17 +29,26 @@ structure:
 
 ocr:
   backend: auto
-  lang: en
+  # Vietnamese helps names/diacritics in schedules/tables
+  lang: vi
   trocr_model_name: microsoft/trocr-base-printed
   confidence_threshold: 0.50
   cell_padding: 4
+  # Passed into PaddleOCR(...) when backend is paddleocr/auto and paddle is available
+  paddle_kwargs:
+    use_space_char: true
+    det_db_box_thresh: 0.45
+    det_db_unclip_ratio: 1.8
   preprocess:
     denoise: true
     autocontrast_cutoff: 1
     contrast: 1.45
     sharpness: 1.8
-    binarize: true
-    binarize_percentile: 58
+    # For colored screenshot tables, binarize can drop Vietnamese diacritics.
+    # If times/OFF/PH are still noisy, try:
+    #   binarize: true
+    #   binarize_percentile: 58-65
+    binarize: false
 
 output:
   formats: [html, csv, json]
