@@ -119,7 +119,8 @@ class StructureRecognizer:
 
         try:
             import torch
-            from src.models.structure_model import load_line_segmentation_model
+
+            from ..model.structure_model import load_structure_model
 
             if not self.checkpoint_path:
                 self._line_cnn = False
@@ -127,7 +128,7 @@ class StructureRecognizer:
 
             device = "cuda" if torch.cuda.is_available() else "cpu"
 
-            model = load_line_segmentation_model(self.checkpoint_path, device)
+            model = load_structure_model(str(self.checkpoint_path), device)
 
             self._line_cnn = (torch, model, device)
 

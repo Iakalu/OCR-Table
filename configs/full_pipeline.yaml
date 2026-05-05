@@ -2,11 +2,15 @@ preprocess:
   max_side: 1800
   deskew: true
   denoise: true
+  # tuned for screenshot-like tables (colored cells, small text)
+  contrast: 1.35
+  sharpness: 1.6
 
 detection:
   backend: table_transformer
   model_name: microsoft/table-transformer-detection
-  confidence_threshold: 0.65
+  # lower threshold helps avoid missing the table region in screenshots
+  confidence_threshold: 0.45
   nms_iou: 0.50
   image_size: 1333
 
@@ -17,7 +21,7 @@ structure:
   line_threshold: 0.45
   line_projection_threshold: 0.08
   structure_threshold: 0.65
-  merge_tolerance: 8
+  merge_tolerance: 10
   min_cell_width: 18
   min_cell_height: 12
   max_rows: 120
@@ -29,6 +33,13 @@ ocr:
   trocr_model_name: microsoft/trocr-base-printed
   confidence_threshold: 0.50
   cell_padding: 4
+  preprocess:
+    denoise: true
+    autocontrast_cutoff: 1
+    contrast: 1.45
+    sharpness: 1.8
+    binarize: true
+    binarize_percentile: 58
 
 output:
   formats: [html, csv, json]

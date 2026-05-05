@@ -42,17 +42,17 @@ def print_status(status: dict):
     print("PaddleOCR:")
     print(f"  paddleocr package : {ok(status['paddleocr'])}")
     print(f"  paddle package    : {ok(status['paddle'])}")
-    print(f"  → usable          : {ok(status['paddle_ready'])}\n")
+    print(f"  usable            : {ok(status['paddle_ready'])}\n")
 
     print("Tesseract:")
     print(f"  pytesseract       : {ok(status['pytesseract'])}")
     print(f"  executable        : {status['tesseract_exec']}")
-    print(f"  → usable          : {ok(status['tesseract_ready'])}\n")
+    print(f"  usable            : {ok(status['tesseract_ready'])}\n")
 
     print("TrOCR (Transformers):")
     print(f"  transformers      : {ok(status['transformers'])}")
     print(f"  torch             : {ok(status['torch'])}")
-    print(f"  → usable          : {ok(status['trocr_ready'])}\n")
+    print(f"  usable            : {ok(status['trocr_ready'])}\n")
 
 
 # RECOMMENDATION LOGIC
@@ -60,13 +60,13 @@ def print_recommendations(status: dict):
     print("=== RECOMMENDATIONS ===\n")
 
     if status["paddle_ready"]:
-        print("PaddleOCR is READY → best choice for this project.\n")
+        print("PaddleOCR is READY (best choice for this project).\n")
         return
 
     print("PaddleOCR NOT ready\n")
 
     if not status["paddleocr"]:
-        print("→ Install paddleocr:")
+        print("Install paddleocr:")
         print("   pip install paddleocr")
 
     if not status["paddle"]:

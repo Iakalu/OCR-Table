@@ -31,7 +31,7 @@ class TableDetector:
 
         boxes = self._predict(image)
 
-        return [list(b.box) for b in boxes]
+        return [list(b.bbox) for b in boxes]
 
 
     # INTERNAL
@@ -59,10 +59,10 @@ class TableDetector:
 
             self._hf_backend = (torch, processor, model)
 
-            print("✔ Loaded Table Transformer")
+            print("[ok] Loaded Table Transformer")
 
         except Exception as e:
-            print("⚠️ Table Transformer not available:", e)
+            print("[warn] Table Transformer not available:", e)
             self._hf_backend = False
 
         return self._hf_backend

@@ -58,7 +58,7 @@ def main() -> None:
         if not image_path.exists():
             raise FileNotFoundError(f"Image not found: {image_path}")
     else:
-        print("No image provided → using synthetic table")
+        print("No image provided -> using synthetic table")
         image_path = create_synthetic_table(output_dir / "synthetic_table.png")
 
     print(f"\nInput image: {image_path}")

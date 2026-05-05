@@ -70,7 +70,10 @@ def load_structure_model(checkpoint_path: str, device: str = "cpu") -> LineSegNe
 
     model = LineSegNet().to(device)
 
-    checkpoint = torch.load(checkpoint_path, map_location=device)
+    try:
+        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    except TypeError:
+        checkpoint = torch.load(checkpoint_path, map_location=device)
 
     if isinstance(checkpoint, dict):
         if "model_state" in checkpoint:
@@ -95,3 +98,10 @@ def save_structure_model(model: nn.Module, path: str):
         },
         path
     )
+
+
+build_line_segmentation_model = build_structure_model
+
+
+def load_line_segmentation_model(checkpoint_path: str, device: str = "cpu") -> LineSegNet:
+    return load_structure_model(checkpoint_path, device)

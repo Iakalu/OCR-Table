@@ -1,61 +1,43 @@
-# Dataset setup
+# Data / Dataset setup
 
-Khong commit dataset vao GitHub. Hay dat dataset trong `data/raw/`.
+Khong commit dataset vao GitHub. Cac thu muc du lieu lon nen dat trong `data/raw/` (da duoc ignore trong `.gitignore`).
 
-## PubTables-1M
+## 1. Local datasets (neu ban muon tai ve)
 
-- Link: https://github.com/microsoft/table-transformer
-- Dung cho: table detection, structure recognition, functional analysis.
-- Phu hop nhat neu ban muon fine-tune Table Transformer.
-
-Goi y:
+Goi y cau truc:
 
 ```text
-data/raw/pubtables1m/
-  images/
-  train/
-  val/
-  test/
-  words/
+data/raw/
+  pubtables1m/        # neu fine-tune Table Transformer
+  tablebank/
+  pubtabnet/
+  fintabnet/
 ```
 
-## TableBank
+## 2. Train structure model tu Hugging Face (khong can tai dataset ve)
 
-- Link: https://github.com/doc-analysis/TableBank
-- Dung cho: table detection voi document sinh tu Word/LaTeX.
-
-## PubTabNet
-
-- Link: https://github.com/ibm-aur-nlp/PubTabNet
-- Dung cho: image-to-HTML table structure recognition.
-
-## FinTabNet
-
-- Dung cho: bang tai chinh, header phuc tap, merged cells.
-
-## ICDAR 2019 cTDaR
-
-- Link: https://zenodo.org/records/2649217
-- Dung cho: benchmark kho voi scan/historical documents.
-
-## Chien luoc thuc hien bai tap
-
-Dataset chinh da chon cho repo:
-
-```text
-katphlab/fintabnet-pubtables-full
-```
-
-Train truc tiep tu Hugging Face:
+Repo ho tro streaming dataset `katphlab/fintabnet-pubtables-full` trong `train_structure_model.py`:
 
 ```powershell
 python train_structure_model.py --data-source hf-fintabnet-pubtables --hf-split train --max-remote-samples 2000 --epochs 5 --steps-per-epoch 100 --batch-size 4
 ```
 
-Chien luoc:
+## 3. Remote manifest JSONL (khong can luu dataset local)
 
-1. Demo ban dau bang synthetic table.
-2. Train structure model bang `katphlab/fintabnet-pubtables-full`.
-3. Dung `boxes` + `category_ids` de tao mask row/column.
-4. Sau khi train, checkpoint nam tai `checkpoints/structure_line_cnn.pt`.
-5. Chay lai web/demo de dung model structure da train.
+Neu ban co it sample va muon host tren internet (GitHub raw / S3 / GCS), tao file `.jsonl`:
+
+- `image_url`: URL anh bang (png/jpg)
+- `vertical_lines`, `horizontal_lines`: toa do line (normalized 0..1 hoac pixel)
+- `line_mask_width`: (tuy chon) do day line mask
+
+Xem vi du: `data/remote_manifest_example.jsonl`
+
+Train:
+
+```powershell
+python train_structure_model.py --data-source manifest-url --manifest-url "https://your-domain.com/table_structure_manifest.jsonl" --epochs 5 --steps-per-epoch 100 --batch-size 4
+```
+
+## 4. Tai lieu lien quan
+
+Xem them: `docs/training_vi.md`

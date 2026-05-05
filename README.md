@@ -101,9 +101,10 @@ Model co the dung:
 |-- data/
 |   `-- README.md                  # cach ket noi dataset
 |-- docs/
-|   |-- github_guide_vi.md
-|   |-- model_design_vi.md
-|   `-- tuning_guide_vi.md
+|   |-- README_vi.md
+|   |-- running_and_tuning_vi.md
+|   |-- design_vi.md
+|   `-- training_vi.md
 |-- notebooks/
 |   |-- 01_architecture_demo.ipynb
 |   |-- 02_training_skeleton.ipynb
@@ -200,7 +201,7 @@ Neu output co bang nhung cac o rong, kiem tra OCR:
 python check_ocr_backend.py
 ```
 
-Huong dan chi tiet xem `docs/ocr_setup_vi.md`.
+Huong dan chi tiet xem `docs/running_and_tuning_vi.md`.
 
 ## 7. Chay notebook
 
@@ -279,7 +280,7 @@ Train truc tiep tu manifest URL:
 python train_structure_model.py --data-source manifest-url --manifest-url "https://your-domain.com/table_structure_manifest.jsonl" --epochs 5 --steps-per-epoch 100 --batch-size 4
 ```
 
-Chi tiet xem `docs/remote_dataset_training_vi.md`.
+Chi tiet xem `docs/training_vi.md`.
 
 ## 8.3 Dataset chinh duoc chon cho bai
 
@@ -322,7 +323,7 @@ Chi tiet xem `data/README.md`.
 
 ## 10. Push len GitHub
 
-Xem huong dan chi tiet trong `docs/github_guide_vi.md`.
+Xem huong dan chi tiet trong `docs/README_vi.md`.
 
 Lenh nhanh:
 

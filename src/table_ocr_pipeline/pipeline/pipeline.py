@@ -4,9 +4,10 @@ import json
 from pathlib import Path
 from typing import List
 
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 from .detection import TableDetector
+from .ocr import OCRReader
 from .reconstruct import cells_to_matrix, write_csv, write_html, write_json
 from .structure import StructureRecognizer
 from ..utils.types import Cell
@@ -14,10 +15,6 @@ from ..utils.utils import crop
 
 
 class TableOCRPipeline:
-
-    def _get_ocr():
-        from .ocr import CellOCR
-        return CellOCR
 
     def __init__(self, config: dict):
         self.config = config
@@ -39,6 +36,7 @@ class TableOCRPipeline:
             self.ocr.debug_dir = output_dir
 
         image = Image.open(image_path).convert("RGB")
+        image = self._preprocess(image)
 
 
         # DETECTION
@@ -127,19 +125,33 @@ class TableOCRPipeline:
     def _tokens_inside_cell(self, tokens, cell_bbox):
         x1, y1, x2, y2 = cell_bbox
 
+        def area(b):
+            return max(0, b[2] - b[0]) * max(0, b[3] - b[1])
+
+        def intersection(a, b):
+            ix1 = max(a[0], b[0])
+            iy1 = max(a[1], b[1])
+            ix2 = min(a[2], b[2])
+            iy2 = min(a[3], b[3])
+            if ix2 <= ix1 or iy2 <= iy1:
+                return 0
+            return (ix2 - ix1) * (iy2 - iy1)
+
         assigned = []
+        cell_area = area((x1, y1, x2, y2)) or 1
 
         for token in tokens:
             tx1, ty1, tx2, ty2 = token.bbox
+            inter = intersection((x1, y1, x2, y2), (tx1, ty1, tx2, ty2))
+            if inter <= 0:
+                continue
 
-            # center point
-            cx = (tx1 + tx2) / 2
-            cy = (ty1 + ty2) / 2
-
-            if x1 <= cx <= x2 and y1 <= cy <= y2:
+            # Keep token if it meaningfully overlaps the cell.
+            # This is more robust than using the token center for small fonts / slight bbox shifts.
+            overlap = inter / min(cell_area, area((tx1, ty1, tx2, ty2)) or 1)
+            if overlap >= 0.2:
                 assigned.append(token)
 
-        # sort top-left → bottom-right
         return sorted(assigned, key=lambda t: (t.bbox[1], t.bbox[0]))
 
 
@@ -147,3 +159,30 @@ class TableOCRPipeline:
     def _pil_to_np(self, image: Image.Image):
         import numpy as np
         return np.array(image)
+
+    def _preprocess(self, image: Image.Image) -> Image.Image:
+        """
+        Lightweight PIL-only preprocessing to improve detection/structure/OCR on
+        screenshot-like tables (colored cells, small text).
+        Controlled by `preprocess` config section (already present in YAMLs).
+        """
+        cfg = self.config.get("preprocess", {}) or {}
+
+        # resize down if needed (keeps aspect ratio)
+        max_side = int(cfg.get("max_side", 0) or 0)
+        if max_side > 0:
+            w, h = image.size
+            scale = max(w, h) / max_side if max(w, h) > max_side else 1.0
+            if scale > 1.0:
+                image = image.resize((int(w / scale), int(h / scale)), resample=Image.Resampling.LANCZOS)
+
+        # denoise (median helps on JPEG artifacts / screenshots)
+        if bool(cfg.get("denoise", False)):
+            image = image.filter(ImageFilter.MedianFilter(size=3))
+
+        # boost contrast & sharpness a bit for small fonts/grid lines
+        image = ImageOps.autocontrast(image, cutoff=1)
+        image = ImageEnhance.Contrast(image).enhance(float(cfg.get("contrast", 1.25)))
+        image = ImageEnhance.Sharpness(image).enhance(float(cfg.get("sharpness", 1.4)))
+
+        return image

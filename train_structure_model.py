@@ -193,7 +193,7 @@ def main() -> None:
         output,
     )
 
-    print(f"saved checkpoint → {output}")
+    print(f"saved checkpoint -> {output}")
 
 
 if __name__ == "__main__":

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import List
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 from ..utils.types import OCRToken
 
@@ -44,7 +45,16 @@ class OCRReader:
         if self.backend in {"auto", "paddleocr"}:
             paddle = self._load_paddle()
             if paddle:
-                return self._recognize_paddle(image, paddle)
+                try:
+                    return self._recognize_paddle(image, paddle)
+                except NotImplementedError as exc:
+                    # Some Paddle/PaddleX builds on Windows hit PIR/oneDNN runtime issues.
+                    # Disable Paddle backend and continue with fallbacks.
+                    self._debug(f"PaddleOCR runtime failed: {type(exc).__name__}: {exc}")
+                    self._paddle = False
+                except Exception as exc:
+                    self._debug(f"PaddleOCR runtime failed: {type(exc).__name__}: {exc}")
+                    self._paddle = False
 
 
         # Tesseract fallback
@@ -67,7 +77,14 @@ class OCRReader:
         if self.backend in {"auto", "paddleocr"}:
             paddle = self._load_paddle()
             if paddle:
-                return self._recognize_paddle_tokens(image.convert("RGB"), paddle)
+                try:
+                    return self._recognize_paddle_tokens(image.convert("RGB"), paddle)
+                except NotImplementedError as exc:
+                    self._debug(f"PaddleOCR token runtime failed: {type(exc).__name__}: {exc}")
+                    self._paddle = False
+                except Exception as exc:
+                    self._debug(f"PaddleOCR token runtime failed: {type(exc).__name__}: {exc}")
+                    self._paddle = False
 
             self._debug("PaddleOCR unavailable → no tokens")
 
@@ -76,6 +93,7 @@ class OCRReader:
 
     # PREPROCESS
     def _prepare_cell_for_ocr(self, image: Image.Image) -> Image.Image:
+        cfg = (self.config.get("ocr", {}) or {}).get("preprocess", {}) or {}
 
         width, height = image.size
 
@@ -89,7 +107,27 @@ class OCRReader:
             scale = max(2, min(4, int(180 / max(1, image.width))))
             image = image.resize((image.width * scale, image.height * scale))
 
-        return image.convert("RGB")
+        image = image.convert("RGB")
+
+        # extra clarity for small text on colored backgrounds
+        if bool(cfg.get("denoise", True)):
+            image = image.filter(ImageFilter.MedianFilter(size=3))
+
+        image = ImageOps.autocontrast(image, cutoff=int(cfg.get("autocontrast_cutoff", 1)))
+        image = ImageEnhance.Contrast(image).enhance(float(cfg.get("contrast", 1.35)))
+        image = ImageEnhance.Sharpness(image).enhance(float(cfg.get("sharpness", 1.6)))
+
+        # Optional binarize for time strings / OFF / PH
+        if bool(cfg.get("binarize", True)):
+            gray = image.convert("L")
+            arr = np.asarray(gray).astype("float32")
+            # percentile threshold works well for screenshots
+            p = float(cfg.get("binarize_percentile", 55))
+            thr = float(np.percentile(arr, p))
+            bw = (arr > thr).astype("uint8") * 255
+            image = Image.fromarray(bw, mode="L").convert("RGB")
+
+        return image
 
 
     # PADDLE OCR
@@ -98,22 +136,36 @@ class OCRReader:
             return self._paddle
 
         try:
+            # Reduce Windows runtime issues (PIR/oneDNN) seen in some paddle builds.
+            os.environ.setdefault("FLAGS_enable_pir_api", "0")
+            os.environ.setdefault("FLAGS_use_mkldnn", "0")
+            os.environ.setdefault("FLAGS_enable_onednn", "0")
+
             from paddleocr import PaddleOCR
 
-            try:
-                self._paddle = PaddleOCR(
-                    use_angle_cls=True,
-                    lang=self.lang,
-                    show_log=False
-                )
-            except Exception:
-                self._paddle = PaddleOCR(
-                    use_angle_cls=True,
-                    lang="en",
-                    show_log=False
-                )
+            def _try_create(lang: str):
+                # PaddleOCR args vary across versions. Some builds don't accept `show_log`.
+                kwargs = {
+                    "use_angle_cls": True,
+                    "lang": lang,
+                }
 
-            print("✔ PaddleOCR loaded")
+                try:
+                    return PaddleOCR(**kwargs, show_log=False)
+                except TypeError:
+                    return PaddleOCR(**kwargs)
+                except ValueError as exc:
+                    msg = str(exc).lower()
+                    if "show_log" in msg and ("unknown argument" in msg or "unexpected" in msg):
+                        return PaddleOCR(**kwargs)
+                    raise
+
+            try:
+                self._paddle = _try_create(self.lang)
+            except Exception:
+                self._paddle = _try_create("en")
+
+            print("[ok] PaddleOCR loaded")
 
         except Exception as exc:
             self._debug(f"PaddleOCR load failed: {type(exc).__name__}: {exc}")
@@ -122,7 +174,19 @@ class OCRReader:
         return self._paddle
 
     def _recognize_paddle(self, image: Image.Image, ocr) -> OCRToken:
-        result = ocr.ocr(np.array(image), cls=True)
+        img = np.array(image)
+        try:
+            result = ocr.ocr(img, cls=True)
+        except TypeError as exc:
+            # PaddleOCR API differences across versions:
+            # some versions route kwargs into predict() which may not accept `cls`.
+            if "cls" in str(exc) and ("unexpected" in str(exc).lower() or "got an unexpected keyword argument" in str(exc).lower()):
+                result = ocr.ocr(img)
+            else:
+                raise
+        except NotImplementedError:
+            # Bubble up to caller to fallback.
+            raise
 
         texts = []
         scores = []
@@ -149,7 +213,18 @@ class OCRReader:
 
     def _recognize_paddle_tokens(self, image: Image.Image, ocr) -> List[OCRToken]:
         try:
-            result = ocr.ocr(np.array(image), cls=True)
+            img = np.array(image)
+            try:
+                result = ocr.ocr(img, cls=True)
+            except TypeError as exc:
+                if "cls" in str(exc) and (
+                    "unexpected" in str(exc).lower() or "got an unexpected keyword argument" in str(exc).lower()
+                ):
+                    result = ocr.ocr(img)
+                else:
+                    raise
+            except NotImplementedError:
+                raise
         except Exception as exc:
             self._debug(f"PaddleOCR table OCR failed: {exc}")
             return []
